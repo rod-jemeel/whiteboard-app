@@ -44,12 +44,17 @@ export default function JoinWhiteboardPage({ params }: { params: Promise<{ code:
         return
       }
 
+      // Debug: Log the invite code we're searching for
+      console.log('Searching for whiteboard with invite code:', inviteCode)
+
       // Find whiteboard by invite code
       const { data: whiteboard, error: whiteboardError } = await supabase
         .from('whiteboards')
         .select('*')
         .eq('invite_code', inviteCode)
         .maybeSingle() // Use maybeSingle to handle no results gracefully
+      
+      console.log('Whiteboard query result:', { whiteboard, error: whiteboardError })
 
       if (whiteboardError) {
         const errorMessage = handleSupabaseError(whiteboardError, 'Join Whiteboard')
@@ -59,7 +64,8 @@ export default function JoinWhiteboardPage({ params }: { params: Promise<{ code:
       }
 
       if (!whiteboard) {
-        setError('Invalid invite code')
+        console.error('No whiteboard found for invite code:', inviteCode)
+        setError('Invalid invite code. Please check the code and try again.')
         setIsLoading(false)
         return
       }
@@ -76,7 +82,7 @@ export default function JoinWhiteboardPage({ params }: { params: Promise<{ code:
         .select('*')
         .eq('whiteboard_id', whiteboard.id)
         .eq('user_id', user?.id)
-        .single()
+        .maybeSingle()
 
       if (existingCollab) {
         // Already a collaborator, just redirect
@@ -94,7 +100,8 @@ export default function JoinWhiteboardPage({ params }: { params: Promise<{ code:
         })
 
       if (collabError) {
-        setError('Failed to join whiteboard')
+        console.error('Failed to add collaborator:', collabError)
+        setError(`Failed to join whiteboard: ${collabError.message}`)
         setIsLoading(false)
         return
       }
@@ -102,7 +109,8 @@ export default function JoinWhiteboardPage({ params }: { params: Promise<{ code:
       // Redirect to whiteboard
       router.push(`/whiteboard/${whiteboard.id}`)
     } catch (err) {
-      setError('An error occurred')
+      console.error('Unexpected error in joinWhiteboard:', err)
+      setError('An unexpected error occurred. Please try again.')
       setIsLoading(false)
     }
   }
