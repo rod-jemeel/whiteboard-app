@@ -7,14 +7,16 @@ import { RootState, AppDispatch } from '@/store/store'
 import { createClient } from '@/lib/supabase/client'
 import dynamic from 'next/dynamic'
 import { DrawingTools } from '@/components/whiteboard/DrawingTools'
-import { ArrowLeft, Trash2, UserPlus } from 'lucide-react'
+import { ArrowLeft, Trash2, UserPlus, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import { setWhiteboard } from '@/store/slices/whiteboard-slice'
 import { setUser } from '@/store/slices/auth-slice'
+import { setZoom, resetZoom, addToHistory } from '@/store/slices/drawing-slice'
 import { RealtimeCursor } from '@/components/realtime/RealtimeCursor'
 import { CurrentUserAvatar } from '@/components/realtime/CurrentUserAvatar'
 import { RealtimeAvatarStack } from '@/components/realtime/RealtimeAvatarStack'
 import { RealtimeChat } from '@/components/realtime/RealtimeChat'
 import { InviteModal } from '@/components/whiteboard/InviteModal'
+import { ClearCanvasModal } from '@/components/whiteboard/ClearCanvasModal'
 
 // Dynamically import Canvas component to avoid SSR issues with Konva
 const Canvas = dynamic(() => import('@/components/whiteboard/Canvas').then((mod) => mod.Canvas), {
@@ -43,10 +45,13 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
   const dispatch = useDispatch<AppDispatch>()
   const user = useSelector((state: RootState) => state.auth.user)
   const whiteboard = useSelector((state: RootState) => state.whiteboard.currentWhiteboard)
+  const zoom = useSelector((state: RootState) => state.drawing.zoom)
+  const { history, historyIndex, canvasTexture } = useSelector((state: RootState) => state.drawing)
   const [drawings, setDrawings] = useState<DrawingElement[]>([])
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 })
   const [whiteboardId, setWhiteboardId] = useState<string | null>(null)
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showClearModal, setShowClearModal] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -87,6 +92,29 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
     checkUserAndFetch()
   }, [dispatch, router, user])
 
+  // Handle undo/redo
+  useEffect(() => {
+    if (historyIndex >= 0 && history[historyIndex]) {
+      setDrawings(history[historyIndex])
+    }
+  }, [historyIndex, history])
+  
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        dispatch({ type: 'drawing/undo' })
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault()
+        dispatch({ type: 'drawing/redo' })
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [dispatch])
+  
   useEffect(() => {
     if (!user || !whiteboardId) return
     
@@ -178,6 +206,8 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
       })) || []
       
       setDrawings(formattedDrawings)
+      // Initialize history with current state
+      dispatch(addToHistory(formattedDrawings))
     } catch (error) {
       console.error('Error fetching drawings:', error)
     }
@@ -218,10 +248,11 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
   const handleDrawingComplete = async (newDrawing: DrawingElement) => {
     // Don't add to local state - let real-time subscription handle it
     await saveDrawing(newDrawing)
+    // Add the current drawings state to history for undo/redo
+    dispatch(addToHistory([...drawings, newDrawing]))
   }
 
-  const clearCanvas = async () => {
-    if (!confirm('Are you sure you want to clear the entire canvas?')) return
+  const clearMyDrawings = async () => {
     if (!whiteboardId || !user) return
 
     try {
@@ -232,9 +263,25 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
         .eq('user_id', user.id)
 
       if (error) throw error
-      setDrawings([])
+      // The real-time subscription will handle updating the UI
     } catch (error) {
-      console.error('Error clearing canvas:', error)
+      console.error('Error clearing my drawings:', error)
+    }
+  }
+
+  const clearAllDrawings = async () => {
+    if (!whiteboardId || !user) return
+
+    try {
+      const { error } = await supabase
+        .from('drawings')
+        .delete()
+        .eq('whiteboard_id', whiteboardId)
+
+      if (error) throw error
+      // The real-time subscription will handle updating the UI
+    } catch (error) {
+      console.error('Error clearing all drawings:', error)
     }
   }
 
@@ -270,6 +317,35 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
               <RealtimeAvatarStack whiteboardId={whiteboardId!} />
               <CurrentUserAvatar size="sm" />
               
+              <div className="flex items-center gap-1 border-l pl-4">
+                <button
+                  onClick={() => dispatch(setZoom(Math.max(0.1, zoom - 0.1)))}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+                  title="Zoom Out (Scroll Down)"
+                >
+                  <ZoomOut className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
+                </button>
+                <div className="px-3 py-1 bg-gray-100 rounded-lg">
+                  <span className="text-sm font-semibold text-gray-900 min-w-[3.5rem] inline-block text-center">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                </div>
+                <button
+                  onClick={() => dispatch(setZoom(Math.min(5, zoom + 0.1)))}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group"
+                  title="Zoom In (Scroll Up)"
+                >
+                  <ZoomIn className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
+                </button>
+                <button
+                  onClick={() => dispatch(resetZoom())}
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Reset Zoom"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
+              
               <button
                 onClick={() => setShowInviteModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
@@ -279,7 +355,7 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
               </button>
               
               <button
-                onClick={clearCanvas}
+                onClick={() => setShowClearModal(true)}
                 className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
@@ -294,6 +370,9 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
             drawings={drawings}
             onDrawingComplete={handleDrawingComplete}
             stageSize={stageSize}
+            zoom={zoom}
+            onZoomChange={(newZoom) => dispatch(setZoom(newZoom))}
+            canvasTexture={canvasTexture}
           />
           {whiteboardId && <RealtimeCursor whiteboardId={whiteboardId} />}
         </div>
@@ -302,13 +381,23 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
       {whiteboardId && <RealtimeChat whiteboardId={whiteboardId} />}
       
       {whiteboard && (
-        <InviteModal
-          whiteboardId={whiteboardId!}
-          whiteboardName={whiteboard.name}
-          inviteCode={whiteboard.invite_code || ''}
-          isOpen={showInviteModal}
-          onClose={() => setShowInviteModal(false)}
-        />
+        <>
+          <InviteModal
+            whiteboardId={whiteboardId!}
+            whiteboardName={whiteboard.name}
+            inviteCode={whiteboard.invite_code || ''}
+            isOpen={showInviteModal}
+            onClose={() => setShowInviteModal(false)}
+          />
+          
+          <ClearCanvasModal
+            isOpen={showClearModal}
+            onClose={() => setShowClearModal(false)}
+            onClearMine={clearMyDrawings}
+            onClearAll={clearAllDrawings}
+            isOwner={whiteboard.user_id === user?.id}
+          />
+        </>
       )}
     </div>
   )

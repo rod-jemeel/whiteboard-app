@@ -5,12 +5,14 @@ import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useAppDispatch } from '@/store/hooks'
-import { setUser } from '@/app/auth/_redux/auth-slice'
+import { useDispatch } from 'react-redux'
+import { AppDispatch } from '@/store/store'
+import { setUser } from '@/store/slices/auth-slice'
+import { getFullUrl } from '@/lib/utils/app-url'
 
 export function AuthForm() {
   const router = useRouter()
-  const dispatch = useAppDispatch()
+  const dispatch = useDispatch<AppDispatch>()
   const supabase = createClient()
 
   supabase.auth.onAuthStateChange((event, session) => {
@@ -41,17 +43,17 @@ export function AuthForm() {
             },
           },
           className: {
-            container: 'w-full',
+            container: 'w-full [&_label]:!text-white [&_label]:!opacity-90',
             button: 'w-full px-4 py-3 text-white bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-colors font-medium',
             input: 'w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent backdrop-blur-sm',
-            label: 'text-white/90 font-medium text-sm mb-2 block',
+            label: '!text-white !opacity-90 font-medium text-sm mb-2 block',
             anchor: 'text-indigo-300 hover:text-indigo-200 transition-colors',
             divider: 'text-white/40',
             message: 'text-red-300 text-sm',
           },
         }}
         providers={[]}
-        redirectTo={`${window.location.origin}/auth/callback`}
+        redirectTo={getFullUrl('/auth/callback')}
       />
     </div>
   )

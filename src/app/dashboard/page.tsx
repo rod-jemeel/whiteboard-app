@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState, AppDispatch } from '@/store/store'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, LogOut, LayoutGrid, UserPlus } from 'lucide-react'
+import { Plus, LogOut, LayoutGrid, UserPlus, User } from 'lucide-react'
 import { WhiteboardGrid } from '@/components/dashboard/WhiteboardGrid'
+import { CurrentUserAvatar } from '@/components/realtime/CurrentUserAvatar'
 import { setWhiteboards, setLoading } from '@/store/slices/dashboard-slice'
 import { logout } from '@/store/slices/auth-slice'
 import { checkMigrationStatus } from '@/lib/supabase/migration-check'
@@ -160,7 +161,14 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-bold text-gray-900">My Whiteboards</h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600 font-medium">{user?.email}</span>
+              <CurrentUserAvatar size="sm" showUsername={true} />
+              <button
+                onClick={() => router.push('/profile')}
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+              >
+                <User className="w-4 h-4" />
+                <span className="font-medium">Profile</span>
+              </button>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
@@ -217,14 +225,14 @@ export default function DashboardPage() {
 
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl transform transition-all">
+          <div className="bg-white text-gray-900 rounded-2xl p-6 w-full max-w-md shadow-2xl transform transition-all">
             <h2 className="text-2xl font-bold mb-4 text-gray-900">Create New Whiteboard</h2>
             <input
               type="text"
               value={newWhiteboardName}
               onChange={(e) => setNewWhiteboardName(e.target.value)}
               placeholder="Enter whiteboard name"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
               onKeyDown={(e) => e.key === 'Enter' && createWhiteboard()}
               autoFocus
             />

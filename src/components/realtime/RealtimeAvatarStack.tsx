@@ -8,6 +8,8 @@ import { RootState } from '@/store/store'
 interface OnlineUser {
   id: string
   email: string
+  username?: string
+  avatarUrl?: string
   lastSeen: string
 }
 
@@ -25,13 +27,20 @@ export function RealtimeAvatarStack({ whiteboardId }: RealtimeAvatarStackProps) 
 
     const updatePresence = async () => {
       try {
+        // First fetch user profile
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('username, avatar_url')
+          .eq('user_id', user.id)
+          .single()
+        
         const { error } = await supabase
           .from('presence')
           .upsert({
             whiteboard_id: whiteboardId,
             user_id: user.id,
             user_email: user.email,
-            user_name: user.email?.split('@')[0],
+            user_name: profileData?.username || user.email?.split('@')[0],
             is_online: true,
             last_seen: new Date().toISOString()
           }, {
@@ -92,14 +101,28 @@ export function RealtimeAvatarStack({ whiteboardId }: RealtimeAvatarStackProps) 
             }
 
             if (data) {
+              // Fetch profiles for all online users
+              const userIds = data.map(u => u.user_id)
+              const { data: profiles } = await supabase
+                .from('user_profiles')
+                .select('user_id, username, avatar_url')
+                .in('user_id', userIds)
+              
+              const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || [])
+              
               setOnlineUsers(
                 data
                   .filter(u => u.user_id !== user.id)
-                  .map(u => ({
-                    id: u.user_id,
-                    email: u.user_email || 'Anonymous',
-                    lastSeen: u.last_seen
-                  }))
+                  .map(u => {
+                    const profile = profileMap.get(u.user_id)
+                    return {
+                      id: u.user_id,
+                      email: u.user_email || 'Anonymous',
+                      username: profile?.username || u.user_name,
+                      avatarUrl: profile?.avatar_url,
+                      lastSeen: u.last_seen
+                    }
+                  })
               )
             }
           } catch (err) {
@@ -132,10 +155,10 @@ export function RealtimeAvatarStack({ whiteboardId }: RealtimeAvatarStackProps) 
     }
   }, [user, whiteboardId, supabase])
 
-  const getInitials = (email: string) => {
-    return email
-      .split('@')[0]
-      .split('.')
+  const getInitials = (user: OnlineUser) => {
+    const name = user.username || user.email.split('@')[0]
+    return name
+      .split(/[\s\.]/)
       .map(part => part[0])
       .join('')
       .toUpperCase()
@@ -152,14 +175,24 @@ export function RealtimeAvatarStack({ whiteboardId }: RealtimeAvatarStackProps) 
     <div className="flex items-center gap-2">
       <div className="flex -space-x-2">
         {onlineUsers.slice(0, 3).map((onlineUser) => (
-          <div
-            key={onlineUser.id}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs text-white font-medium ring-2 ring-white"
-            style={{ backgroundColor: getColor(onlineUser.id) }}
-            title={onlineUser.email}
-          >
-            {getInitials(onlineUser.email)}
-          </div>
+          onlineUser.avatarUrl ? (
+            <img
+              key={onlineUser.id}
+              src={onlineUser.avatarUrl}
+              alt={onlineUser.username || onlineUser.email}
+              className="w-8 h-8 rounded-full object-cover ring-2 ring-white"
+              title={onlineUser.username || onlineUser.email}
+            />
+          ) : (
+            <div
+              key={onlineUser.id}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs text-white font-medium ring-2 ring-white"
+              style={{ backgroundColor: getColor(onlineUser.id) }}
+              title={onlineUser.username || onlineUser.email}
+            >
+              {getInitials(onlineUser)}
+            </div>
+          )
         ))}
         {onlineUsers.length > 3 && (
           <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium ring-2 ring-white">

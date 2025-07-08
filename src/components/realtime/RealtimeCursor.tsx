@@ -10,6 +10,7 @@ interface CursorPosition {
   y: number
   userId: string
   userEmail: string
+  username?: string
   color: string
 }
 
@@ -26,7 +27,26 @@ export function RealtimeCursor({ whiteboardId }: RealtimeCursorProps) {
   const user = useSelector((state: RootState) => state.auth.user)
   const [cursors, setCursors] = useState<Map<string, CursorPosition>>(new Map())
   const [userColor] = useState(() => userColors[Math.floor(Math.random() * userColors.length)])
+  const [userProfile, setUserProfile] = useState<{ username?: string } | null>(null)
   const supabase = createClient()
+  
+  useEffect(() => {
+    if (!user) return
+    
+    const fetchProfile = async () => {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('username')
+        .eq('user_id', user.id)
+        .single()
+      
+      if (data) {
+        setUserProfile(data)
+      }
+    }
+    
+    fetchProfile()
+  }, [user, supabase])
 
   const broadcastCursor = useCallback((x: number, y: number) => {
     if (!user) return
@@ -40,10 +60,11 @@ export function RealtimeCursor({ whiteboardId }: RealtimeCursorProps) {
           y,
           userId: user.id,
           userEmail: user.email || 'Anonymous',
+          username: userProfile?.username,
           color: userColor
         }
       })
-  }, [user, whiteboardId, userColor, supabase])
+  }, [user, whiteboardId, userColor, userProfile, supabase])
 
   useEffect(() => {
     if (!user || !whiteboardId) return
@@ -138,7 +159,7 @@ export function RealtimeCursor({ whiteboardId }: RealtimeCursorProps) {
             className="absolute top-5 left-2 px-2 py-1 rounded text-xs text-white font-medium whitespace-nowrap"
             style={{ backgroundColor: cursor.color }}
           >
-            {cursor.userEmail.split('@')[0]}
+            {cursor.username || cursor.userEmail.split('@')[0]}
           </div>
         </div>
       ))}

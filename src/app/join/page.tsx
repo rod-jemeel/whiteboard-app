@@ -16,7 +16,7 @@ export default function JoinPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+      <div className="bg-white text-gray-900 rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex p-3 bg-indigo-100 rounded-full mb-4">
             <UserPlus className="w-8 h-8 text-indigo-600" />
@@ -37,7 +37,7 @@ export default function JoinPage() {
               onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
               placeholder="Enter 6-character code"
               maxLength={6}
-              className="w-full px-4 py-3 text-center text-2xl font-mono font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-4 py-3 text-center text-2xl font-mono font-bold text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
 

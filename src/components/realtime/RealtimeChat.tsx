@@ -10,6 +10,7 @@ interface Message {
   id: string
   userId: string
   userEmail: string
+  username?: string
   message: string
   timestamp: string
 }
@@ -24,8 +25,27 @@ export function RealtimeChat({ whiteboardId }: RealtimeChatProps) {
   const [newMessage, setNewMessage] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [userProfile, setUserProfile] = useState<{ username?: string } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
+  
+  useEffect(() => {
+    if (!user) return
+    
+    const fetchProfile = async () => {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('username')
+        .eq('user_id', user.id)
+        .single()
+      
+      if (data) {
+        setUserProfile(data)
+      }
+    }
+    
+    fetchProfile()
+  }, [user, supabase])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -47,6 +67,7 @@ export function RealtimeChat({ whiteboardId }: RealtimeChatProps) {
           id: crypto.randomUUID(),
           userId: payload.userId,
           userEmail: payload.userEmail,
+          username: payload.username,
           message: payload.message,
           timestamp: new Date().toISOString()
         }
@@ -73,6 +94,7 @@ export function RealtimeChat({ whiteboardId }: RealtimeChatProps) {
         payload: {
           userId: user.id,
           userEmail: user.email || 'Anonymous',
+          username: userProfile?.username,
           message: newMessage.trim()
         }
       })
@@ -80,10 +102,10 @@ export function RealtimeChat({ whiteboardId }: RealtimeChatProps) {
     setNewMessage('')
   }
 
-  const getInitials = (email: string) => {
-    return email
-      .split('@')[0]
-      .split('.')
+  const getInitials = (msg: Message) => {
+    const name = msg.username || msg.userEmail.split('@')[0]
+    return name
+      .split(/[\s\.]/)
       .map(part => part[0])
       .join('')
       .toUpperCase()
@@ -139,7 +161,7 @@ export function RealtimeChat({ whiteboardId }: RealtimeChatProps) {
                     className="w-8 h-8 rounded-full flex items-center justify-center text-xs text-white font-medium flex-shrink-0"
                     style={{ backgroundColor: getColor(msg.userId) }}
                   >
-                    {getInitials(msg.userEmail)}
+                    {getInitials(msg)}
                   </div>
                   <div
                     className={`max-w-[70%] ${
@@ -149,7 +171,7 @@ export function RealtimeChat({ whiteboardId }: RealtimeChatProps) {
                     } rounded-lg px-3 py-2`}
                   >
                     <p className="text-xs opacity-75 mb-1">
-                      {msg.userEmail.split('@')[0]}
+                      {msg.username || msg.userEmail.split('@')[0]}
                     </p>
                     <p className="text-sm">{msg.message}</p>
                   </div>
@@ -168,7 +190,7 @@ export function RealtimeChat({ whiteboardId }: RealtimeChatProps) {
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                 placeholder="Type a message..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder-gray-400"
               />
               <button
                 onClick={sendMessage}

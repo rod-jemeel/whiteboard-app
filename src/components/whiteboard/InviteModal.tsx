@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Copy, X, UserPlus, Check } from 'lucide-react'
+import { getFullUrl } from '@/lib/utils/app-url'
 
 interface InviteModalProps {
   whiteboardId: string
@@ -25,7 +26,7 @@ export function InviteModal({ whiteboardId, whiteboardName, inviteCode, isOpen, 
   }
 
   const copyInviteLink = () => {
-    const link = `${window.location.origin}/join/${inviteCode}`
+    const link = getFullUrl(`/join/${inviteCode}`)
     navigator.clipboard.writeText(link)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -33,7 +34,7 @@ export function InviteModal({ whiteboardId, whiteboardName, inviteCode, isOpen, 
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <div className="bg-white text-gray-900 rounded-2xl p-6 w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-100 rounded-lg">
