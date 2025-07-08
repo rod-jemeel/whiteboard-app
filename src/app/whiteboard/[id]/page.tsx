@@ -248,13 +248,17 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
   const saveDrawing = async (drawing: DrawingElement) => {
     if (!whiteboardId || !user) return
     try {
-      // Map our drawing types to database types
-      const dbType = drawing.type === 'line' ? 'pen' : drawing.type
+      // Ensure drawing has valid type for database
+      const validTypes = ['pen', 'line', 'rectangle', 'circle', 'eraser']
+      if (!validTypes.includes(drawing.type)) {
+        console.error('Invalid drawing type:', drawing.type)
+        return
+      }
       
       const insertData = {
         whiteboard_id: whiteboardId,
         user_id: user.id,
-        type: dbType,
+        type: drawing.type, // Use the type as-is since 'line' is valid
         data: drawing
       }
       
