@@ -38,6 +38,7 @@ interface DrawingElement {
   color: string
   strokeWidth: number
   fill?: string
+  user_id?: string // Added for filtering user drawings
 }
 
 export default function WhiteboardPage({ params }: { params: Promise<{ id: string }> }) {
@@ -143,6 +144,7 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
           filter: `whiteboard_id=eq.${whiteboardId}`
         },
         (payload) => {
+          console.log('Drawing INSERT event:', payload)
           const newDrawing = {
             ...payload.new.data,
             id: payload.new.id
@@ -158,11 +160,29 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
           table: 'drawings',
           filter: `whiteboard_id=eq.${whiteboardId}`
         },
-        () => {
-          // Refetch all drawings when any are deleted
-          fetchDrawings()
+        (payload) => {
+          console.log('Drawing DELETE event:', payload)
+          if (payload.old && payload.old.id) {
+            // Remove the specific drawing from state
+            setDrawings(prev => prev.filter(d => d.id !== payload.old.id))
+          } else {
+            // Fallback: refetch all drawings
+            fetchDrawings()
+          }
         }
       )
+      .on('broadcast', { event: 'drawing_deleted' }, (payload) => {
+        console.log('Custom drawing_deleted event:', payload)
+        if (payload.payload?.id) {
+          setDrawings(prev => prev.filter(d => d.id !== payload.payload.id))
+        }
+      })
+      .on('broadcast', { event: 'all_drawings_cleared' }, (payload) => {
+        console.log('Custom all_drawings_cleared event:', payload)
+        if (payload.payload?.whiteboard_id === whiteboardId) {
+          setDrawings([])
+        }
+      })
       .subscribe()
     
     return () => {
@@ -212,6 +232,7 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
       const formattedDrawings = data?.map(d => ({
         ...d.data,
         id: d.id,
+        user_id: d.user_id, // Include user_id for clearing
         // Ensure type consistency - database stores 'pen' but UI might expect it
         type: d.data.type
       })) || []
@@ -267,14 +288,36 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
     if (!whiteboardId || !user) return
 
     try {
+      // Get drawings to delete for broadcasting
+      const drawingsToDelete = drawings.filter(d => d.user_id === user.id)
+      
+      // Optimistically update UI
+      setDrawings(prev => prev.filter(d => {
+        // Keep drawings that don't belong to current user
+        return d.user_id !== user.id
+      }))
+
       const { error } = await supabase
         .from('drawings')
         .delete()
         .eq('whiteboard_id', whiteboardId)
         .eq('user_id', user.id)
 
-      if (error) throw error
-      // The real-time subscription will handle updating the UI
+      if (error) {
+        // Revert on error
+        fetchDrawings()
+        throw error
+      }
+
+      // Broadcast a custom event as a workaround
+      const channel = supabase.channel(`drawings:${whiteboardId}`)
+      drawingsToDelete.forEach(drawing => {
+        channel.send({
+          type: 'broadcast',
+          event: 'drawing_deleted',
+          payload: { id: drawing.id }
+        })
+      })
     } catch (error) {
       console.error('Error clearing my drawings:', error)
     }
@@ -284,13 +327,30 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
     if (!whiteboardId || !user) return
 
     try {
+      // Store current drawings for broadcasting
+      const allDrawings = [...drawings]
+      
+      // Optimistically clear all drawings
+      setDrawings([])
+
       const { error } = await supabase
         .from('drawings')
         .delete()
         .eq('whiteboard_id', whiteboardId)
 
-      if (error) throw error
-      // The real-time subscription will handle updating the UI
+      if (error) {
+        // Revert on error
+        fetchDrawings()
+        throw error
+      }
+
+      // Broadcast a custom event for all drawings
+      const channel = supabase.channel(`drawings:${whiteboardId}`)
+      channel.send({
+        type: 'broadcast',
+        event: 'all_drawings_cleared',
+        payload: { whiteboard_id: whiteboardId }
+      })
     } catch (error) {
       console.error('Error clearing all drawings:', error)
     }
