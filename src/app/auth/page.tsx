@@ -1,19 +1,12 @@
 'use client'
 
 import { AuthForm } from '@/components/auth/AuthForm'
-import { ShaderGradientBackground } from '@/components/ui/ShaderGradientBackground'
-import { useEffect, useState } from 'react'
+import { SimpleGradientBackground } from '@/components/ui/SimpleGradientBackground'
 
 export default function AuthPage() {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {mounted && <ShaderGradientBackground />}
+      <SimpleGradientBackground />
       
       <div className="w-full max-w-md z-10">
         <div className="text-center mb-8">

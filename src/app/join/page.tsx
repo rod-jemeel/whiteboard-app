@@ -35,15 +35,15 @@ export default function JoinPage() {
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
-              placeholder="Enter 6-character code"
-              maxLength={6}
+              placeholder="Enter 8-character code"
+              maxLength={8}
               className="w-full px-4 py-3 text-center text-2xl font-mono font-bold text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
 
           <button
             onClick={handleJoin}
-            disabled={code.length !== 6}
+            disabled={code.length < 6}
             className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Join Whiteboard
