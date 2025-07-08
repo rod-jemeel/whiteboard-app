@@ -13,9 +13,8 @@ interface InviteModalProps {
   onClose: () => void
 }
 
-export function InviteModal({ whiteboardId, whiteboardName, inviteCode, isOpen, onClose }: InviteModalProps) {
+export function InviteModal({ whiteboardName, inviteCode, isOpen, onClose }: InviteModalProps) {
   const [copied, setCopied] = useState(false)
-  const supabase = createClient()
 
   if (!isOpen) return null
 

@@ -10,13 +10,13 @@ import dashboardReducer from '@/store/slices/dashboard-slice'
 // Create a noop storage for SSR
 const createNoopStorage = () => {
   return {
-    getItem(_key: string) {
+    getItem() {
       return Promise.resolve(null)
     },
-    setItem(_key: string, value: any) {
+    setItem(_key: string, value: unknown) {
       return Promise.resolve(value)
     },
-    removeItem(_key: string) {
+    removeItem() {
       return Promise.resolve()
     },
   }

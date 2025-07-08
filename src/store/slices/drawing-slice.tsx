@@ -9,7 +9,7 @@ interface DrawingState {
   strokeWidth: number
   fill: boolean
   zoom: number
-  history: any[]
+  history: unknown[][]
   historyIndex: number
   canvasTexture: CanvasTexture
   gridSize: number
@@ -49,7 +49,7 @@ const drawingSlice = createSlice({
     resetZoom: (state) => {
       state.zoom = 1
     },
-    addToHistory: (state, action: PayloadAction<any>) => {
+    addToHistory: (state, action: PayloadAction<unknown[]>) => {
       // Remove any history after current index
       state.history = state.history.slice(0, state.historyIndex + 1)
       // Add new state to history

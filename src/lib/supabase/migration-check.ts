@@ -21,7 +21,7 @@ export async function checkMigrationStatus() {
       hasInviteCode: !inviteError,
       isFullyMigrated: !collabError && !inviteError
     }
-  } catch (error) {
+  } catch {
     return {
       hasCollaboratorsTable: false,
       hasInviteCode: false,

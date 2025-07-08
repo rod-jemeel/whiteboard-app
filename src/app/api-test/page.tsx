@@ -4,22 +4,31 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ApiTestPage() {
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<Array<{
+    test: string
+    success: boolean
+    result?: unknown
+    error?: string
+    details?: unknown
+    hint?: string
+    code?: string
+  }>>([])
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
-  const runTest = async (testName: string, testFn: () => Promise<any>) => {
+  const runTest = async (testName: string, testFn: () => Promise<unknown>) => {
     try {
       const result = await testFn()
       setResults(prev => [...prev, { test: testName, success: true, result }])
-    } catch (error: any) {
+    } catch (error) {
+      const errorObj = error as { message?: string; details?: unknown; hint?: string; code?: string }
       setResults(prev => [...prev, { 
         test: testName, 
         success: false, 
-        error: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+        error: errorObj.message || 'Unknown error',
+        details: errorObj.details,
+        hint: errorObj.hint,
+        code: errorObj.code
       }])
     }
   }
