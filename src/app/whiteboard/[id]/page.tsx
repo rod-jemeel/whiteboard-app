@@ -178,9 +178,20 @@ export default function WhiteboardPage({ params }: { params: Promise<{ id: strin
         .from('whiteboards')
         .select('*')
         .eq('id', whiteboardId)
-        .single()
+        .maybeSingle()
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching whiteboard:', error)
+        router.push('/dashboard')
+        return
+      }
+
+      if (!data) {
+        console.error('Whiteboard not found or access denied')
+        router.push('/dashboard')
+        return
+      }
+
       dispatch(setWhiteboard(data))
     } catch (error) {
       console.error('Error fetching whiteboard:', error)

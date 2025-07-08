@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store/store'
 import { Loader2 } from 'lucide-react'
+import { handleSupabaseError } from '@/lib/supabase/error-handler'
 
 export default function JoinWhiteboardPage({ params }: { params: Promise<{ code: string }> }) {
   const router = useRouter()
@@ -36,14 +37,28 @@ export default function JoinWhiteboardPage({ params }: { params: Promise<{ code:
 
   const joinWhiteboard = async () => {
     try {
+      // First ensure user is authenticated
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (!currentUser) {
+        router.push('/auth')
+        return
+      }
+
       // Find whiteboard by invite code
       const { data: whiteboard, error: whiteboardError } = await supabase
         .from('whiteboards')
         .select('*')
         .eq('invite_code', inviteCode)
-        .single()
+        .maybeSingle() // Use maybeSingle to handle no results gracefully
 
-      if (whiteboardError || !whiteboard) {
+      if (whiteboardError) {
+        const errorMessage = handleSupabaseError(whiteboardError, 'Join Whiteboard')
+        setError(errorMessage)
+        setIsLoading(false)
+        return
+      }
+
+      if (!whiteboard) {
         setError('Invalid invite code')
         setIsLoading(false)
         return
